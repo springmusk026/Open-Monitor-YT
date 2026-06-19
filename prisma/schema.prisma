@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AppConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Channel {
+  id              String           @id @default(cuid())
+  youtubeId       String           @unique
+  handle          String?
+  name            String
+  avatarUrl       String?
+  bannerUrl       String?
+  description     String?
+  subscriberCount BigInt?
+  videoCount      Int?
+  lastPolledAt    DateTime?
+  pollingPaused   Boolean          @default(false)
+  label           String?
+  videos          Video[]
+  snapshots       ChannelSnapshot[]
+  insights        ChannelInsight[]
+}
+
+model ChannelSnapshot {
+  id              String   @id @default(cuid())
+  channelId       String
+  subscriberCount BigInt?
+  videoCount      Int?
+  description     String?
+  snappedAt       DateTime @default(now())
+  channel         Channel  @relation(fields: [channelId], references: [id])
+}
+
+model Video {
+  id            String         @id @default(cuid())
+  youtubeId     String         @unique
+  channelId     String
+  title         String
+  description   String?
+  thumbnailUrl  String?
+  tags          String[]
+  publishedAt   DateTime?
+  viewCount     BigInt?
+  likeCount     BigInt?
+  commentCount  BigInt?
+  duration      String?
+  firstSeenAt   DateTime       @default(now())
+  channel       Channel        @relation(fields: [channelId], references: [id])
+  snapshots     VideoSnapshot[]
+  diffs         VideoDiff[]
+}
+
+model VideoSnapshot {
+  id           String   @id @default(cuid())
+  videoId      String
+  title        String
+  thumbnailUrl String?
+  description  String?
+  tags         String[]
+  viewCount    BigInt?
+  likeCount    BigInt?
+  snappedAt    DateTime @default(now())
+  video        Video    @relation(fields: [videoId], references: [id])
+}
+
+model VideoDiff {
+  id         String    @id @default(cuid())
+  videoId    String
+  field      DiffField
+  oldValue   String?
+  newValue   String?
+  detectedAt DateTime  @default(now())
+  video      Video     @relation(fields: [videoId], references: [id])
+}
+
+enum DiffField {
+  TITLE
+  THUMBNAIL
+  DESCRIPTION
+  TAGS
+  VIEW_COUNT
+  LIKE_COUNT
+}
+
+model ChannelInsight {
+  id          String       @id @default(cuid())
+  channelId   String
+  type        InsightType
+  summary     String
+  detail      String?
+  generatedAt DateTime     @default(now())
+  channel     Channel      @relation(fields: [channelId], references: [id])
+}
+
+enum InsightType {
+  AB_TEST_DETECTED
+  UPLOAD_SCHEDULE
+  TITLE_PATTERN
+  THUMBNAIL_STYLE
+  CONTENT_GAP
+  TRENDING_TOPIC
+  COMPETITOR_SUMMARY
+}
+
+model AlertRule {
+  id          String       @id @default(cuid())
+  channelId   String?
+  trigger     AlertTrigger
+  notifChannel NotifChannel
+  destination String
+  enabled     Boolean      @default(true)
+}
+
+enum AlertTrigger {
+  NEW_VIDEO
+  TITLE_CHANGE
+  THUMBNAIL_CHANGE
+  SUBSCRIBER_MILESTONE
+  DESCRIPTION_CHANGE
+  TAGS_CHANGE
+  ANY_CHANGE
+}
+
+enum NotifChannel {
+  EMAIL
+  WEBHOOK
+  SLACK
+  DISCORD
+  TELEGRAM
+}

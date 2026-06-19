@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    ports: ['3000:3000']
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/openmonitoryt
+      REDIS_URL: redis://redis:6379
+    depends_on: [db, redis]
+
+  worker:
+    build: .
+    command: pnpm run worker
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/openmonitoryt
+      REDIS_URL: redis://redis:6379
+    depends_on: [db, redis]
+
+  db:
+    image: postgres:16
+    volumes: [pgdata:/var/lib/postgresql/data]
+    environment:
+      POSTGRES_DB: openmonitoryt
+      POSTGRES_PASSWORD: password
+
+  redis:
+    image: redis:7-alpine
+    volumes: [redisdata:/data]
+
+volumes:
+  pgdata:
+  redisdata:
