@@ -39,6 +39,8 @@ model ChannelSnapshot {
   description     String?
   snappedAt       DateTime @default(now())
   channel         Channel  @relation(fields: [channelId], references: [id])
+
+  @@index([channelId, snappedAt])
 }
 
 model Video {
@@ -58,6 +60,8 @@ model Video {
   channel       Channel        @relation(fields: [channelId], references: [id])
   snapshots     VideoSnapshot[]
   diffs         VideoDiff[]
+
+  @@index([channelId, publishedAt])
 }
 
 model VideoSnapshot {
@@ -71,6 +75,8 @@ model VideoSnapshot {
   likeCount    BigInt?
   snappedAt    DateTime @default(now())
   video        Video    @relation(fields: [videoId], references: [id])
+
+  @@index([videoId, snappedAt])
 }
 
 model VideoDiff {
@@ -81,6 +87,8 @@ model VideoDiff {
   newValue   String?
   detectedAt DateTime  @default(now())
   video      Video     @relation(fields: [videoId], references: [id])
+
+  @@index([videoId, detectedAt])
 }
 
 enum DiffField {
@@ -100,6 +108,8 @@ model ChannelInsight {
   detail      String?
   generatedAt DateTime     @default(now())
   channel     Channel      @relation(fields: [channelId], references: [id])
+
+  @@index([channelId, generatedAt])
 }
 
 enum InsightType {

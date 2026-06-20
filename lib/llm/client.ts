@@ -1,10 +1,9 @@
 import OpenAI from "openai";
-import { getAppConfig } from "@/lib/config/appConfig";
+import { getAppConfig, getAppConfigMany } from "@/lib/config/appConfig";
 import { CONFIG_KEYS } from "@/lib/config/keys";
 
 let client: OpenAI | null = null;
-let cachedConfig: { baseUrl: string; apiKey: string; model: string } | null =
-  null;
+let cachedConfig: { baseUrl: string; apiKey: string } | null = null;
 
 export async function getLLMClient(): Promise<OpenAI> {
   const [baseUrl, apiKey] = await Promise.all([
@@ -15,7 +14,6 @@ export async function getLLMClient(): Promise<OpenAI> {
   const newConfig = {
     baseUrl: baseUrl || "https://api.openai.com/v1",
     apiKey: apiKey || "",
-    model: "",
   };
 
   if (
@@ -49,21 +47,29 @@ export async function chatCompletion(
   userPrompt: string,
   options?: { temperature?: number; maxTokens?: number }
 ): Promise<string> {
-  const client = await getLLMClient();
-  const model = await getLLMModel();
+  const llmClient = await getLLMClient();
 
-  const tempRaw = await getAppConfig(CONFIG_KEYS.LLM_TEMPERATURE);
-  const maxTokensRaw = await getAppConfig(CONFIG_KEYS.LLM_MAX_TOKENS);
+  // Batch fetch model + config in one query
+  const config = await getAppConfigMany([
+    CONFIG_KEYS.LLM_MODEL,
+    CONFIG_KEYS.LLM_TEMPERATURE,
+    CONFIG_KEYS.LLM_MAX_TOKENS,
+  ]);
 
-  const response = await client.chat.completions.create({
+  const model = config[CONFIG_KEYS.LLM_MODEL] || "gpt-4o";
+  const temperature = options?.temperature ??
+    (config[CONFIG_KEYS.LLM_TEMPERATURE] ? parseFloat(config[CONFIG_KEYS.LLM_TEMPERATURE]!) : 0.7);
+  const maxTokens = options?.maxTokens ??
+    (config[CONFIG_KEYS.LLM_MAX_TOKENS] ? parseInt(config[CONFIG_KEYS.LLM_MAX_TOKENS]!) : 2048);
+
+  const response = await llmClient.chat.completions.create({
     model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: options?.temperature ?? (tempRaw ? parseFloat(tempRaw) : 0.7),
-    max_tokens:
-      options?.maxTokens ?? (maxTokensRaw ? parseInt(maxTokensRaw) : 2048),
+    temperature,
+    max_tokens: maxTokens,
   });
 
   return response.choices[0]?.message?.content || "";
@@ -75,9 +81,18 @@ export async function chatCompletionJSON<T>(
   options?: { temperature?: number; maxTokens?: number }
 ): Promise<T> {
   const text = await chatCompletion(systemPrompt, userPrompt, options);
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) || [
-    null,
-    text,
-  ];
-  return JSON.parse(jsonMatch[1]!.trim()) as T;
+
+  // Try multiple extraction strategies
+  const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[1].trim()) as T;
+  }
+
+  // Try to find a JSON object or array directly
+  const objectMatch = text.match(/(\{[\s\S]*\})/);
+  if (objectMatch) {
+    return JSON.parse(objectMatch[1].trim()) as T;
+  }
+
+  throw new Error(`Failed to parse JSON from LLM response: ${text.slice(0, 200)}`);
 }
