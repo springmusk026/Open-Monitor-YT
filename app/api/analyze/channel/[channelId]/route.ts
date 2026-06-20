@@ -86,7 +86,7 @@ export async function POST(
       }
     }
 
-    const thumbnailEnabled = await getAppConfig(CONFIG_KEYS.AI_AB_TEST);
+    const thumbnailEnabled = await getAppConfig(CONFIG_KEYS.AI_INSIGHTS_ENABLED);
     if (thumbnailEnabled !== "false") {
       const thumbs = channel.videos
         .filter((v) => v.thumbnailUrl)

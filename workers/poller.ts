@@ -8,7 +8,32 @@ const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 const connectionOpts = { connection: { url: redisUrl } };
 
 const scrapeQueue = new Queue("channel-scrape", connectionOpts as any);
-const videoScrapeQueue = new Queue("video-scrape", connectionOpts as any);
+
+const DEFAULT_INTERVAL_MS = 60_000;
+
+// Read polling interval from DB, fallback to 60s
+async function getPollingIntervalMs(): Promise<number> {
+  try {
+    const row = await prisma.appConfig.findUnique({ where: { key: "polling.intervalMinutes" } });
+    if (row?.value) {
+      const mins = parseInt(row.value);
+      if (!isNaN(mins) && mins > 0) return mins * 60_000;
+    }
+  } catch {}
+  return DEFAULT_INTERVAL_MS;
+}
+
+// Remove existing repeat jobs before adding to avoid duplicates on restart
+async function setupTickSchedule() {
+  const existing = await scrapeQueue.getRepeatableJobs();
+  for (const job of existing) {
+    await scrapeQueue.removeRepeatableByKey(job.key);
+  }
+  const interval = await getPollingIntervalMs();
+  await scrapeQueue.add("tick", {}, { repeat: { every: interval } });
+  console.log(`[worker] Polling interval set to ${interval / 1000}s`);
+}
+setupTickSchedule();
 
 const tickWorker = new Worker(
   "tick",
@@ -28,14 +53,11 @@ const tickWorker = new Worker(
   connectionOpts as any
 );
 
-scrapeQueue.add("tick", {}, { repeat: { every: 60_000 } });
-
 const scrapeWorker = new Worker(
   "channel-scrape",
   async (job) => {
     const { channelId, handle } = job.data;
     if (!channelId || !handle) {
-      console.log(`[worker] Skipping job with missing data`);
       return { skipped: true };
     }
     const normalizedHandle = normalizeHandle(handle);
@@ -130,6 +152,11 @@ const scrapeWorker = new Worker(
               snapshots: { orderBy: { snappedAt: "desc" }, take: 1 },
             },
           });
+        } else {
+          // For existing videos, preserve DB values for fields not available from channel page
+          tags = video.tags || [];
+          description = video.description || null;
+          likeCount = video.likeCount;
         }
 
         const prevSnapshot = video.snapshots[0];
@@ -198,16 +225,24 @@ const scrapeWorker = new Worker(
     } catch (error: any) {
       console.error(`[worker] Scrape failed for ${normalizedHandle}:`, error.message);
 
-      const failCount = await prisma.channelSnapshot.count({
-        where: { channelId },
+      // Count recent consecutive failures (snapshots in last 10 minutes = 0 means all recent polls failed)
+      const recentSuccess = await prisma.channelSnapshot.count({
+        where: {
+          channelId,
+          snappedAt: { gte: new Date(Date.now() - 10 * 60_000) },
+        },
       });
 
-      if (failCount > 5) {
-        await prisma.channel.update({
-          where: { id: channelId },
-          data: { pollingPaused: true },
-        });
-        console.log(`[worker] Paused polling for ${normalizedHandle} after consecutive failures`);
+      if (recentSuccess === 0) {
+        // Check if job has been retried enough times
+        const attempts = job.attemptsMade || 0;
+        if (attempts >= 3) {
+          await prisma.channel.update({
+            where: { id: channelId },
+            data: { pollingPaused: true },
+          });
+          console.log(`[worker] Paused polling for ${normalizedHandle} after repeated failures`);
+        }
       }
 
       throw error;
@@ -221,7 +256,7 @@ scrapeWorker.on("completed", (job) => {
 });
 
 scrapeWorker.on("failed", (job, err) => {
-  console.error(`[worker] Failed: ${job?.data.handle} - ${err.message}`);
+  if (job?.data.handle) console.error(`[worker] Failed: ${normalizeHandle(job.data.handle)} - ${err.message}`);
 });
 
 console.log("[worker] Poller started. Waiting for jobs...");

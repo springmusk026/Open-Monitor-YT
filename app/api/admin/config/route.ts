@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAppConfig, setAppConfig, setAppConfigMany } from "@/lib/config/appConfig";
+import { getAppConfigMany, setAppConfigMany } from "@/lib/config/appConfig";
 
 export async function GET() {
   try {
@@ -20,10 +20,7 @@ export async function GET() {
       "notif.telegram.enabled", "notif.webhook.enabled",
     ];
 
-    const config: Record<string, string | null> = {};
-    for (const key of keys) {
-      config[key] = await getAppConfig(key);
-    }
+    const config = await getAppConfigMany(keys);
 
     return NextResponse.json({ config });
   } catch (error: any) {

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (channel) {
-      const queue = await getScrapeQueue();
+      const queue = getScrapeQueue();
       const job = await queue.add(
         "channel-scrape",
         { channelId: channel.id, handle: channel.handle || handle },
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const queue = await getScrapeQueue();
+    const queue = getScrapeQueue();
     const job = await queue.add(
       "channel-scrape",
       { channelId: channel.id, handle: handle },

@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { jobId } = await params;
-    const queue = await getScrapeQueue();
+    const queue = getScrapeQueue();
     const job = await queue.getJob(jobId);
 
     if (!job) {

@@ -1,47 +1,31 @@
-import { Queue, Worker } from "bullmq";
+import { Queue } from "bullmq";
 
-let redisUrl: string | null = null;
+const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+const connectionOpts = { connection: { url: redisUrl } };
 
-function getRedisUrl(): string {
-  if (!redisUrl) {
-    redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+const queues = new Map<string, Queue>();
+
+function getQueue(name: string): Queue {
+  let q = queues.get(name);
+  if (!q) {
+    q = new Queue(name, connectionOpts as any);
+    queues.set(name, q);
   }
-  return redisUrl;
+  return q;
 }
 
 export function getScrapeQueue(): Queue {
-  return new Queue("channel-scrape", {
-    connection: { url: getRedisUrl() },
-  } as any);
+  return getQueue("channel-scrape");
 }
 
 export function getVideoScrapeQueue(): Queue {
-  return new Queue("video-scrape", {
-    connection: { url: getRedisUrl() },
-  } as any);
+  return getQueue("video-scrape");
 }
 
 export function getInsightQueue(): Queue {
-  return new Queue("insight-generate", {
-    connection: { url: getRedisUrl() },
-  } as any);
+  return getQueue("insight-generate");
 }
 
 export function getNotificationQueue(): Queue {
-  return new Queue("notification-dispatch", {
-    connection: { url: getRedisUrl() },
-  } as any);
-}
-
-export function createWorker(
-  queueName: string,
-  handler: (jobData: any) => Promise<any>
-): Worker {
-  return new Worker(
-    queueName,
-    async (job) => {
-      return handler(job.data);
-    },
-    { connection: { url: getRedisUrl() } } as any
-  );
+  return getQueue("notification-dispatch");
 }

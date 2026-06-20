@@ -94,8 +94,10 @@ export async function scrapeChannelPage(
   const subMatch = mainSection.match(/([\d.]+[KMB]?)\s*subscribers/i);
   const subscriberCount = subMatch ? subMatch[1] : "";
 
-  // Extract video count from markdown - match "N videos" in the Videos section header area
-  const vidCountMatch = markdown.match(/(\d[\d,]*)\s*videos\]/i) || markdown.match(/(\d[\d,]*)\s*videos/i);
+  // Extract video count from markdown - look for the channel's video count stat
+  // Avoid matching playlist video counts like "[243 videos]" by looking for standalone "N videos" text
+  const videosSection = markdown.split(/##\s*\[?Videos/i)[0] || "";
+  const vidCountMatch = videosSection.match(/([\d,]+)\s*videos/i);
   const videoCount = vidCountMatch ? vidCountMatch[1].replace(/,/g, "") : "";
 
   return {

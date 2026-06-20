@@ -129,7 +129,7 @@ export const alertsApi = {
   },
 
   delete: async (id: string) => {
-    await api.delete(`/alerts/${id}`);
+    await api.delete(`/alerts?id=${id}`);
   },
 };
 
