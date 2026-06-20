@@ -38,7 +38,7 @@ model ChannelSnapshot {
   videoCount      Int?
   description     String?
   snappedAt       DateTime @default(now())
-  channel         Channel  @relation(fields: [channelId], references: [id])
+  channel         Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@index([channelId, snappedAt])
 }
@@ -57,7 +57,7 @@ model Video {
   commentCount  BigInt?
   duration      String?
   firstSeenAt   DateTime       @default(now())
-  channel       Channel        @relation(fields: [channelId], references: [id])
+  channel       Channel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
   snapshots     VideoSnapshot[]
   diffs         VideoDiff[]
 
@@ -74,7 +74,7 @@ model VideoSnapshot {
   viewCount    BigInt?
   likeCount    BigInt?
   snappedAt    DateTime @default(now())
-  video        Video    @relation(fields: [videoId], references: [id])
+  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId, snappedAt])
 }
@@ -86,7 +86,7 @@ model VideoDiff {
   oldValue   String?
   newValue   String?
   detectedAt DateTime  @default(now())
-  video      Video     @relation(fields: [videoId], references: [id])
+  video      Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId, detectedAt])
 }
@@ -107,7 +107,7 @@ model ChannelInsight {
   summary     String
   detail      String?
   generatedAt DateTime     @default(now())
-  channel     Channel      @relation(fields: [channelId], references: [id])
+  channel     Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@index([channelId, generatedAt])
 }

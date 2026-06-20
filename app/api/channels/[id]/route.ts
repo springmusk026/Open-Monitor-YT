@@ -65,17 +65,10 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await prisma.videoDiff.deleteMany({
-      where: { video: { channelId: id } },
-    });
-    await prisma.videoSnapshot.deleteMany({
-      where: { video: { channelId: id } },
-    });
-    await prisma.video.deleteMany({ where: { channelId: id } });
-    await prisma.channelSnapshot.deleteMany({ where: { channelId: id } });
-    await prisma.channelInsight.deleteMany({ where: { channelId: id } });
-    await prisma.alertRule.deleteMany({ where: { channelId: id } });
-    await prisma.channel.delete({ where: { id } });
+    await prisma.$transaction([
+      prisma.alertRule.deleteMany({ where: { channelId: id } }),
+      prisma.channel.delete({ where: { id } }),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
