@@ -1,4 +1,4 @@
-import { chatCompletion } from "@/lib/llm/client";
+import { chatCompletionJSON } from "@/lib/llm/client";
 
 export interface CompetitorSummaryInsight {
   channelId: string;
@@ -27,43 +27,22 @@ export async function generateCompetitorSummary(
     )
     .join("\n");
 
-  const response = await chatCompletion(
-    `You are a competitive intelligence analyst. Summarize what this YouTube channel has been doing over the last 30 days based on their content changes.
+  return chatCompletionJSON<CompetitorSummaryInsight>(
+    `You are a competitive intelligence analyst. Summarize what this YouTube channel has been doing based on their content changes.
 
 Write a 3-paragraph executive summary covering:
 1. What experiments or changes they've been running
 2. Topics or themes they're doubling down on
 3. Any shifts in their packaging strategy (titles, thumbnails, descriptions)
 
-Also identify:
-- experimentsRun: list of experiments detected
-- topicsDoubledDown: topics they're focusing on
-- packagingShifts: changes to their content packaging
-
 Respond with JSON:
 {
   "channelId": "${channelId}",
   "summary": "3-paragraph executive summary",
-  "experimentsRun": [],
-  "topicsDoubledDown": [],
-  "packagingShifts": []
+  "experimentsRun": ["list of experiments"],
+  "topicsDoubledDown": ["topics"],
+  "packagingShifts": ["shifts"]
 }`,
     `Channel ${channelId} recent activity diffs:\n\n${diffsText}`
   );
-
-  try {
-    const jsonMatch = response.match(/```json\s*([\s\S]*?)```/) || [
-      null,
-      response,
-    ];
-    return JSON.parse(jsonMatch[1]!.trim()) as CompetitorSummaryInsight;
-  } catch {
-    return {
-      channelId,
-      summary: response,
-      experimentsRun: [],
-      topicsDoubledDown: [],
-      packagingShifts: [],
-    };
-  }
 }

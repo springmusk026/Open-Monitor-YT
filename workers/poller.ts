@@ -38,6 +38,10 @@ setupTickSchedule();
 const tickWorker = new Worker(
   "tick",
   async () => {
+    // Check if polling is globally enabled
+    const enabled = await prisma.appConfig.findUnique({ where: { key: "polling.enabled" } });
+    if (enabled?.value === "false") return;
+
     const channels = await prisma.channel.findMany({
       where: { pollingPaused: false },
     });

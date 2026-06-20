@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAppConfigMany, setAppConfigMany } from "@/lib/config/appConfig";
+import { resetFirecrawlClient } from "@/lib/scraper/firecrawlClient";
 
 export async function GET() {
   try {
@@ -48,6 +49,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     await setAppConfigMany(entries);
+
+    // Reset cached clients if their config changed
+    if (Object.keys(entries).some((k) => k.startsWith("firecrawl."))) {
+      resetFirecrawlClient();
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json(

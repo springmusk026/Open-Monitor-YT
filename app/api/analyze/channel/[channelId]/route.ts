@@ -60,7 +60,7 @@ export async function POST(
             hasTitleDiff ? "TITLE" : "THUMBNAIL",
             titleDiffs.filter((d) => d.oldValue || d.newValue)
           );
-          if (insight) insights.push(insight);
+          if (insight) insights.push({ ...insight, _type: "AB_TEST_DETECTED" });
         }
       }
     }
@@ -73,7 +73,7 @@ export async function POST(
 
       if (publishDates.length >= 3) {
         const insight = await analyzeUploadSchedule(channelId, publishDates);
-        if (insight) insights.push(insight);
+        if (insight) insights.push({ ...insight, _type: "UPLOAD_SCHEDULE" });
       }
     }
 
@@ -82,7 +82,7 @@ export async function POST(
       const titles = channel.videos.map((v) => v.title);
       if (titles.length >= 5) {
         const insight = await analyzeTitlePatterns(channelId, titles);
-        if (insight) insights.push(insight);
+        if (insight) insights.push({ ...insight, _type: "TITLE_PATTERN" });
       }
     }
 
@@ -93,7 +93,7 @@ export async function POST(
         .map((v) => v.thumbnailUrl!);
       if (thumbs.length >= 3) {
         const insight = await analyzeThumbnailStyle(channelId, thumbs);
-        if (insight) insights.push(insight);
+        if (insight) insights.push({ ...insight, _type: "THUMBNAIL_STYLE" });
       }
     }
 
@@ -117,7 +117,7 @@ export async function POST(
 
       if (recentDiffs.length >= 3) {
         const insight = await generateCompetitorSummary(channelId, recentDiffs);
-        if (insight) insights.push(insight);
+        if (insight) insights.push({ ...insight, _type: "COMPETITOR_SUMMARY" });
       }
     }
 
@@ -126,7 +126,7 @@ export async function POST(
         prisma.channelInsight.create({
           data: {
             channelId,
-            type: insight.type || "COMPETITOR_SUMMARY",
+            type: insight._type,
             summary: insight.summary || insight.likelyWinner || JSON.stringify(insight),
             detail: JSON.stringify(insight),
           },
