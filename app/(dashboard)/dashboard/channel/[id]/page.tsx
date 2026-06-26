@@ -23,7 +23,7 @@ import { useChannel } from "@/hooks/use-api";
 export default function ChannelDetailPage() {
   const params = useParams();
   const channelId = params.id as string;
-  const { data: channel, isLoading } = useChannel(channelId);
+  const { data: channel, isLoading, error } = useChannel(channelId);
 
   if (isLoading) {
     return (
@@ -45,6 +45,17 @@ export default function ChannelDetailPage() {
             </Card>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-2">
+        <h3 className="text-lg font-semibold text-destructive">Failed to load channel</h3>
+        <p className="text-sm text-muted-foreground">
+          {error instanceof Error ? error.message : "An unexpected error occurred"}
+        </p>
       </div>
     );
   }
@@ -168,18 +179,17 @@ export default function ChannelDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex h-32 items-end gap-1">
-                  {channel.snapshots
-                    .slice(0, 30)
-                    .reverse()
-                    .map((snap) => {
+                  {(() => {
+                    const recent = channel.snapshots.slice(0, 30).reverse();
+                    const max = Math.max(
+                      ...recent.map((s) =>
+                        s.subscriberCount ? Number(s.subscriberCount) : 0
+                      )
+                    );
+                    return recent.map((snap) => {
                       const count = snap.subscriberCount
                         ? Number(snap.subscriberCount)
                         : 0;
-                      const max = Math.max(
-                        ...channel.snapshots.map((s) =>
-                          s.subscriberCount ? Number(s.subscriberCount) : 0
-                        )
-                      );
                       const height = max > 0 ? (count / max) * 100 : 0;
                       return (
                         <div
@@ -189,7 +199,8 @@ export default function ChannelDetailPage() {
                           title={`${count.toLocaleString()} subscribers`}
                         />
                       );
-                    })}
+                    });
+                  })()}
                 </div>
               </CardContent>
             </Card>

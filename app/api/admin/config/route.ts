@@ -17,8 +17,11 @@ export async function GET() {
       "ai.titlePatternAnalysis.enabled", "ai.contentGapAnalysis.enabled",
       "ai.competitorSummary.enabled", "ai.uploadScheduleInference.enabled",
       "ai.autoInsightSchedule",
-      "notif.email.enabled", "notif.slack.enabled", "notif.discord.enabled",
-      "notif.telegram.enabled", "notif.webhook.enabled",
+      "notif.email.enabled", "notif.email.fromAddress", "notif.email.smtpHost",
+      "notif.email.smtpPort", "notif.email.smtpUser", "notif.email.smtpPass",
+      "notif.slack.enabled", "notif.discord.enabled",
+      "notif.telegram.enabled", "notif.telegram.botToken",
+      "notif.webhook.enabled", "notif.webhook.secretHeader",
     ];
 
     const config = await getAppConfigMany(keys);

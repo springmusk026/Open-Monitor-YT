@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import type { Prisma, DiffField as PrismaDiffField } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,15 +12,12 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.VideoDiffWhereInput = {};
     if (channelId) {
       where.video = { channelId };
     }
     if (filter && filter !== "ALL") {
-      if (filter === "AI_INSIGHTS") {
-        return NextResponse.json({ items: [], total: 0, page, limit });
-      }
-      where.field = filter;
+      where.field = filter as PrismaDiffField;
     }
 
     const [diffs, total] = await Promise.all([

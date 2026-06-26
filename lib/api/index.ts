@@ -11,6 +11,7 @@ import type {
   ScrapeJobResponse,
   JobStatus,
   ContentGapInsight,
+  VideoDetail,
 } from "@/types";
 
 export const channelsApi = {
@@ -36,7 +37,7 @@ export const channelsApi = {
     bannerUrl?: string;
     description?: string;
   }) => {
-    const { data } = await api.post<{ channel: any }>("/channels", payload);
+    const { data } = await api.post<{ channel: ChannelListItem }>("/channels", payload);
     return data.channel;
   },
 
@@ -57,6 +58,7 @@ export const scrapeApi = {
   channel: async (payload: {
     handle?: string;
     channelId?: string;
+    label?: string;
   }) => {
     const { data } = await api.post<ScrapeJobResponse>(
       "/scrape/channel",
@@ -94,18 +96,18 @@ export const analyzeApi = {
   },
 
   gap: async (channelAId: string, channelBId: string) => {
-    const { data } = await api.post<{ insight: any }>("/analyze/gap", {
+    const { data } = await api.post<{ insight: ChannelInsight | null }>("/analyze/gap", {
       channelAId,
       channelBId,
     });
     if (!data.insight) return null;
-    let detail = {};
+    let detail: ContentGapInsight = { channelAOnly: [], channelBOnly: [], trendingIntersections: [], suggestedIdeas: [], reasoning: "" };
     try {
       detail = JSON.parse(data.insight.detail || "{}");
     } catch {
       // LLM returned invalid JSON
     }
-    return { ...data.insight, detail };
+    return { ...data.insight, ...detail };
   },
 };
 
@@ -140,7 +142,7 @@ export const alertsApi = {
 
 export const videosApi = {
   get: async (id: string) => {
-    const { data } = await api.get<{ video: any }>(`/videos/${id}`);
+    const { data } = await api.get<{ video: VideoDetail }>(`/videos/${id}`);
     return data.video;
   },
 };

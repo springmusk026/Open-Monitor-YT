@@ -16,8 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useVideo } from "@/hooks/use-api";
+import type { DiffField } from "@/types";
 
-const FIELD_LABELS: Record<string, string> = {
+const FIELD_LABELS: Record<DiffField, string> = {
   TITLE: "Title",
   THUMBNAIL: "Thumbnail",
   DESCRIPTION: "Description",
@@ -139,7 +140,7 @@ export default function VideoDetailPage() {
                 No changes detected yet
               </p>
             ) : (
-              video.diffs.map((diff: any) => (
+              video.diffs.map((diff) => (
                 <div
                   key={diff.id}
                   className="rounded-lg border p-3 space-y-1.5"
@@ -203,16 +204,15 @@ export default function VideoDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="flex h-32 items-end gap-1">
-                {video.snapshots
-                  .slice(0, 30)
-                  .reverse()
-                  .map((snap: any) => {
+                {(() => {
+                  const recent = video.snapshots.slice(0, 30).reverse();
+                  const max = Math.max(
+                    ...recent.map((s) =>
+                      s.viewCount ? Number(s.viewCount) : 0
+                    )
+                  );
+                  return recent.map((snap) => {
                     const count = snap.viewCount ? Number(snap.viewCount) : 0;
-                    const max = Math.max(
-                      ...video.snapshots.map((s: any) =>
-                        s.viewCount ? Number(s.viewCount) : 0
-                      )
-                    );
                     const height = max > 0 ? (count / max) * 100 : 0;
                     return (
                       <div
@@ -222,7 +222,8 @@ export default function VideoDetailPage() {
                         title={`${count.toLocaleString()} views`}
                       />
                     );
-                  })}
+                  });
+                })()}
               </div>
             </CardContent>
           </Card>

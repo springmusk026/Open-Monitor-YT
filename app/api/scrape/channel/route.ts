@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { scrapeChannelPage, normalizeHandle } from "@/lib/scraper/firecrawlClient";
 import { parseSubscriberCount, parseVideoCount } from "@/lib/scraper/parser";
-import { diffSnapshots } from "@/lib/diff/differ";
 import { getScrapeQueue } from "@/lib/queue/queues";
 
 export async function POST(request: NextRequest) {

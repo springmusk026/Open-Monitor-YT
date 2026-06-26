@@ -51,7 +51,7 @@ export default function AlertsPage() {
   });
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { data: rules = [], isLoading } = useAlertRules();
+  const { data: rules = [], isLoading, error } = useAlertRules();
   const { data: channels = [] } = useChannels();
   const createRule = useCreateAlertRule();
   const deleteRule = useDeleteAlertRule();
@@ -179,7 +179,16 @@ export default function AlertsPage() {
         </DialogContent>
       </Dialog>
 
-      {isLoading ? (
+      {error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <h3 className="text-lg font-semibold text-destructive">Failed to load alerts</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {error instanceof Error ? error.message : "An unexpected error occurred"}
+            </p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>

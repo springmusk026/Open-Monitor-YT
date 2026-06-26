@@ -85,16 +85,4 @@ export async function setAppConfigMany(
   }
 }
 
-export async function deleteAppConfig(key: string): Promise<void> {
-  await prisma.appConfig.delete({ where: { key } });
-  cache.delete(key);
-}
 
-export function getConfigTyped<T>(raw: string | null, fallback: T): T {
-  if (raw === null) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}

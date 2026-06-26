@@ -21,7 +21,7 @@ export default function InsightsPage() {
   const [filter, setFilter] = useState("ALL");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const { data: channels = [] } = useChannels();
+  const { data: channels = [], error: channelsError } = useChannels();
 
   const channelInsights = useQueries({
     queries: channels.map((ch) => ({
@@ -93,7 +93,16 @@ export default function InsightsPage() {
         ))}
       </motion.div>
 
-      {isLoading ? (
+      {channelsError ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <h3 className="text-lg font-semibold text-destructive">Failed to load insights</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {channelsError instanceof Error ? channelsError.message : "An unexpected error occurred"}
+            </p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>

@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Rss,
-  LayoutDashboard,
   Youtube,
   Sparkles,
   Bell,

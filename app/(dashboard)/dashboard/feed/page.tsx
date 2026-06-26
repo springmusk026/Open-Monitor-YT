@@ -20,8 +20,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useFeed } from "@/hooks/use-api";
 import { DIFF_FIELDS } from "@/types";
 import type { DiffField } from "@/types";
+import type { LucideIcon } from "lucide-react";
 
-const fieldIcons: Record<DiffField, any> = {
+const fieldIcons: Record<DiffField, LucideIcon> = {
   TITLE: PenLine,
   THUMBNAIL: ImageIcon,
   DESCRIPTION: FileText,
@@ -57,7 +58,7 @@ export default function FeedPage() {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("ALL");
 
-  const { data, isLoading } = useFeed({
+  const { data, isLoading, error } = useFeed({
     page,
     limit: 20,
     filter: filter === "ALL" ? undefined : filter,
@@ -109,7 +110,16 @@ export default function FeedPage() {
         ))}
       </motion.div>
 
-      {isLoading ? (
+      {error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <h3 className="text-lg font-semibold text-destructive">Failed to load feed</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {error instanceof Error ? error.message : "An unexpected error occurred"}
+            </p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <Card key={i}>

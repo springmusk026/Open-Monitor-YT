@@ -5,11 +5,18 @@ function isAllowedBaseUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
-    const hostname = parsed.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "0.0.0.0") return false;
+    if (hostname.startsWith("::ffff:127.") || hostname === "::ffff:0:1") return false;
     if (hostname.startsWith("10.") || hostname.startsWith("172.") || hostname.startsWith("192.168.")) return false;
     if (hostname.startsWith("169.254.")) return false;
+    if (hostname === "metadata.google.internal" || hostname === "169.254.169.254") return false;
     if (hostname.endsWith(".internal") || hostname.endsWith(".local")) return false;
+    const parts = hostname.split(".");
+    if (parts[0] === "172") {
+      const second = parseInt(parts[1], 10);
+      if (second >= 16 && second <= 31) return false;
+    }
     return true;
   } catch {
     return false;

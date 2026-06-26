@@ -66,7 +66,7 @@ export default function ChannelsPage() {
   const [addLabel, setAddLabel] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { data: channels = [], isLoading } = useChannels();
+  const { data: channels = [], isLoading, error } = useChannels();
   const scrapeChannel = useScrapeChannel();
   const updateChannel = useUpdateChannel();
   const deleteChannel = useDeleteChannel();
@@ -75,6 +75,7 @@ export default function ChannelsPage() {
     if (!addHandle.trim()) return;
     await scrapeChannel.mutateAsync({
       handle: addHandle.trim(),
+      label: addLabel.trim() || undefined,
     });
     setShowAdd(false);
     setAddHandle("");
@@ -136,7 +137,16 @@ export default function ChannelsPage() {
         </DialogContent>
       </Dialog>
 
-      {isLoading ? (
+      {error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <h3 className="text-lg font-semibold text-destructive">Failed to load channels</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {error instanceof Error ? error.message : "An unexpected error occurred"}
+            </p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i}>

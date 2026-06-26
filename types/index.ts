@@ -51,6 +51,12 @@ export interface Video {
   _count?: { diffs: number };
 }
 
+export interface VideoDetail extends Video {
+  snapshots: VideoSnapshot[];
+  diffs: VideoDiff[];
+  channel: Pick<Channel, "id" | "name" | "handle" | "avatarUrl">;
+}
+
 export interface VideoSnapshot {
   id: string;
   videoId: string;
@@ -145,9 +151,9 @@ export interface ScrapeJobResponse {
 export interface JobStatus {
   jobId: string;
   state: string;
-  data: any;
-  progress: any;
-  result: any;
+  data: { channelId: string; handle: string } | null;
+  progress: number | Record<string, unknown> | null;
+  result: { channelId: string; diffs: number } | null;
   failedReason: string | null;
   processedOn: number | null;
   finishedOn: number | null;

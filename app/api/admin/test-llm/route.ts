@@ -1,27 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const ALLOWED_LLM_HOSTS = [
-  "api.openai.com",
-  "api.anthropic.com",
-  "api.groq.com",
-  "api.together.xyz",
-  "api.fireworks.ai",
-  "openrouter.ai",
-  "api.mistral.ai",
-  "generativelanguage.googleapis.com",
-];
-
 function isAllowedBaseUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
-    // Block private/internal IPs
-    const hostname = parsed.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") return false;
+    const hostname = parsed.hostname.toLowerCase();
+    // Block localhost and loopback
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "0.0.0.0") return false;
+    // Block IPv4-mapped IPv6 loopback
+    if (hostname.startsWith("::ffff:127.") || hostname === "::ffff:0:1") return false;
+    // Block private/internal ranges
     if (hostname.startsWith("10.") || hostname.startsWith("172.") || hostname.startsWith("192.168.")) return false;
     if (hostname.startsWith("169.254.")) return false;
+    // Block metadata endpoints
+    if (hostname === "metadata.google.internal" || hostname === "169.254.169.254") return false;
+    // Block internal domains
     if (hostname.endsWith(".internal") || hostname.endsWith(".local")) return false;
+    // Validate 172.16-31.x.x range
+    const parts = hostname.split(".");
+    if (parts[0] === "172") {
+      const second = parseInt(parts[1], 10);
+      if (second >= 16 && second <= 31) return false;
+    }
     return true;
   } catch {
     return false;
