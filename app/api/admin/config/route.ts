@@ -23,7 +23,14 @@ export async function GET() {
 
     const config = await getAppConfigMany(keys);
 
-    return NextResponse.json({ config });
+    // Mask sensitive keys in GET response
+    const sensitiveKeys = ["llm.apiKey", "firecrawl.apiKey", "notif.email.smtpPass", "notif.telegram.botToken", "notif.webhook.secretHeader"];
+    const masked: Record<string, string | null> = {};
+    for (const [key, value] of Object.entries(config)) {
+      masked[key] = sensitiveKeys.includes(key) && value ? "••••••••" : value;
+    }
+
+    return NextResponse.json({ config: masked });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Internal error" },

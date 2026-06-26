@@ -27,7 +27,12 @@ Look for:
 - Themes that suggest a trending event or content wave
 - Rank by recurrence count (how many channels cover it)
 
-Respond with JSON matching the required schema. The timeframe should be "last ${days} days".`,
+Respond with this JSON schema:
+{
+  "topics": [{"topic": string, "recurrenceCount": number, "channels": ["channel names"]}],
+  "timeframe": "last ${days} days",
+  "reasoning": "brief explanation"
+}`,
     `Channel data for trend analysis:\n\n${dataText}`
   );
 }

@@ -3,28 +3,46 @@ services:
     build: .
     ports: ['3000:3000']
     environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/openmonitoryt
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@db:5432/openmonitoryt
       REDIS_URL: redis://redis:6379
-    depends_on: [db, redis]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
 
   worker:
     build: .
     command: pnpm run worker
     environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/openmonitoryt
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@db:5432/openmonitoryt
       REDIS_URL: redis://redis:6379
-    depends_on: [db, redis]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
 
   db:
     image: postgres:16
     volumes: [pgdata:/var/lib/postgresql/data]
     environment:
       POSTGRES_DB: openmonitoryt
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
 volumes:
   pgdata:

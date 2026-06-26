@@ -44,9 +44,20 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
+    // Only allow updating safe fields
+    const allowedFields = ["name", "handle", "avatarUrl", "bannerUrl", "description", "label", "pollingPaused"];
+    const data: Record<string, unknown> = {};
+    for (const key of allowedFields) {
+      if (key in body) data[key] = body[key];
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+
     const channel = await prisma.channel.update({
       where: { id },
-      data: body,
+      data,
     });
 
     return NextResponse.json({ channel });

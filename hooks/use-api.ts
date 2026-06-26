@@ -2,6 +2,12 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { channelsApi, scrapeApi, feedApi, analyzeApi, alertsApi, adminApi, videosApi } from "@/lib/api";
+import { toast } from "sonner";
+
+function showError(error: unknown) {
+  const message = error instanceof Error ? error.message : "Something went wrong";
+  toast.error(message);
+}
 
 // ─── Channels ──────────────────────────────────────────────
 
@@ -25,6 +31,7 @@ export function useCreateChannel() {
   return useMutation({
     mutationFn: channelsApi.create,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["channels"] }),
+    onError: showError,
   });
 }
 
@@ -37,6 +44,7 @@ export function useUpdateChannel() {
       qc.invalidateQueries({ queryKey: ["channels"] });
       qc.invalidateQueries({ queryKey: ["channels", vars.id] });
     },
+    onError: showError,
   });
 }
 
@@ -45,6 +53,7 @@ export function useDeleteChannel() {
   return useMutation({
     mutationFn: channelsApi.delete,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["channels"] }),
+    onError: showError,
   });
 }
 
@@ -65,6 +74,7 @@ export function useScrapeChannel() {
   return useMutation({
     mutationFn: scrapeApi.channel,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["channels"] }),
+    onError: showError,
   });
 }
 
@@ -102,6 +112,7 @@ export function useAnalyzeChannel() {
   return useMutation({
     mutationFn: analyzeApi.channel,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["channels"] }),
+    onError: showError,
   });
 }
 
@@ -114,6 +125,7 @@ export function useAnalyzeGap() {
       channelAId: string;
       channelBId: string;
     }) => analyzeApi.gap(channelAId, channelBId),
+    onError: showError,
   });
 }
 
@@ -131,6 +143,7 @@ export function useCreateAlertRule() {
   return useMutation({
     mutationFn: alertsApi.create,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["alerts"] }),
+    onError: showError,
   });
 }
 
@@ -139,12 +152,14 @@ export function useDeleteAlertRule() {
   return useMutation({
     mutationFn: alertsApi.delete,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["alerts"] }),
+    onError: showError,
   });
 }
 
 export function useTestAlertRule() {
   return useMutation({
     mutationFn: alertsApi.test,
+    onError: showError,
   });
 }
 
@@ -162,17 +177,20 @@ export function useUpdateAdminConfig() {
   return useMutation({
     mutationFn: adminApi.updateConfig,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-config"] }),
+    onError: showError,
   });
 }
 
 export function useTestLlm() {
   return useMutation({
     mutationFn: adminApi.testLlm,
+    onError: showError,
   });
 }
 
 export function useTestFirecrawl() {
   return useMutation({
     mutationFn: adminApi.testFirecrawl,
+    onError: showError,
   });
 }

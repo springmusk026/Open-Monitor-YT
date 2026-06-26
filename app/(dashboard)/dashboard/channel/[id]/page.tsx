@@ -268,7 +268,13 @@ export default function ChannelDetailPage() {
                     <p className="mt-2 text-sm">{insight.summary}</p>
                     {insight.detail && (
                       <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs font-mono">
-                        {JSON.stringify(JSON.parse(insight.detail), null, 2)}
+                        {(() => {
+                          try {
+                            return JSON.stringify(JSON.parse(insight.detail), null, 2);
+                          } catch {
+                            return insight.detail;
+                          }
+                        })()}
                       </pre>
                     )}
                   </CardContent>

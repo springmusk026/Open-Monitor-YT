@@ -21,6 +21,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useAlertRules,
@@ -39,6 +49,7 @@ export default function AlertsPage() {
     notifChannel: "WEBHOOK",
     destination: "",
   });
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const { data: rules = [], isLoading } = useAlertRules();
   const { data: channels = [] } = useChannels();
@@ -248,10 +259,7 @@ export default function AlertsPage() {
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs text-destructive hover:text-destructive"
-                      onClick={() => {
-                        if (confirm("Delete this alert rule?"))
-                          deleteRule.mutate(rule.id);
-                      }}
+                      onClick={() => setDeleteTarget(rule.id)}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -262,6 +270,29 @@ export default function AlertsPage() {
           </AnimatePresence>
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Alert Rule</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this alert rule. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) deleteRule.mutate(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

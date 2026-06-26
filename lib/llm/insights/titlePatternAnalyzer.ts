@@ -30,7 +30,17 @@ Identify:
 - Power words that appear frequently
 - Listicle frequency (X things, top N, etc.)
 
-Respond with JSON matching the required schema.`,
+Respond with this JSON schema:
+{
+  "channelId": string,
+  "patterns": ["recurring title patterns"],
+  "averageTitleLength": number,
+  "questionVsStatement": "ratio or description",
+  "emojiUsage": "NONE | RARE | FREQUENT",
+  "powerWords": ["common power words"],
+  "listicleFrequency": "NONE | RARE | FREQUENT",
+  "reasoning": "brief explanation"
+}`,
     `Channel ${channelId} - Last ${titles.length} video titles:\n${titlesText}`
   );
 }

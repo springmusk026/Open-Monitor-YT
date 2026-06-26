@@ -31,10 +31,10 @@ A/B testing on YouTube typically involves:
 - Testing different hooks, keywords, or visual styles
 - The "winner" is often correlated with view count increases
 
-Respond with JSON matching this schema:
+Respond with this JSON schema:
 {
-  "videoId": "${videoId}",
-  "testedField": "${field}",
+  "videoId": string,
+  "testedField": "TITLE" | "THUMBNAIL",
   "variants": ["list of all variant values tested"],
   "likelyWinner": "the variant that appears to have won",
   "confidence": "HIGH | MEDIUM | LOW",

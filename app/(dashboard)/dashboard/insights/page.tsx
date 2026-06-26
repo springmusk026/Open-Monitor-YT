@@ -187,24 +187,25 @@ export default function InsightsPage() {
                         >
                           <div className="mt-3 border-t border-border pt-3">
                             <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs font-mono">
-                              {JSON.stringify(
-                                JSON.parse(insight.detail),
-                                null,
-                                2
-                              )}
+                              {(() => {
+                                try {
+                                  return JSON.stringify(JSON.parse(insight.detail), null, 2);
+                                } catch {
+                                  return insight.detail;
+                                }
+                              })()}
                             </pre>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="mt-2 h-7 text-xs"
                               onClick={() => {
-                                navigator.clipboard.writeText(
-                                  JSON.stringify(
-                                    JSON.parse(insight.detail!),
-                                    null,
-                                    2
-                                  )
-                                );
+                                try {
+                                  const formatted = JSON.stringify(JSON.parse(insight.detail!), null, 2);
+                                  navigator.clipboard.writeText(formatted);
+                                } catch {
+                                  navigator.clipboard.writeText(insight.detail!);
+                                }
                               }}
                             >
                               <Copy className="mr-1 h-3 w-3" />

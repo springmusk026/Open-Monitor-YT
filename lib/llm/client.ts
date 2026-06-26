@@ -5,6 +5,8 @@ import { CONFIG_KEYS } from "@/lib/config/keys";
 let client: OpenAI | null = null;
 let cachedConfig: { baseUrl: string; apiKey: string } | null = null;
 
+const LLM_TIMEOUT_MS = 60_000;
+
 export async function getLLMClient(): Promise<OpenAI> {
   const [baseUrl, apiKey] = await Promise.all([
     getAppConfig(CONFIG_KEYS.LLM_BASE_URL),
@@ -25,6 +27,8 @@ export async function getLLMClient(): Promise<OpenAI> {
     client = new OpenAI({
       apiKey: newConfig.apiKey,
       baseURL: newConfig.baseUrl,
+      timeout: LLM_TIMEOUT_MS,
+      maxRetries: 2,
     });
     cachedConfig = newConfig;
   }
@@ -45,20 +49,19 @@ export async function isLLMEnabled(): Promise<boolean> {
 export async function chatCompletion(
   systemPrompt: string,
   userPrompt: string,
-  options?: { temperature?: number; maxTokens?: number }
+  options?: { temperature?: number; maxTokens?: number; model?: string }
 ): Promise<string> {
   const llmClient = await getLLMClient();
 
-  // Batch fetch model + config in one query
   const config = await getAppConfigMany([
     CONFIG_KEYS.LLM_MODEL,
     CONFIG_KEYS.LLM_TEMPERATURE,
     CONFIG_KEYS.LLM_MAX_TOKENS,
   ]);
 
-  const model = config[CONFIG_KEYS.LLM_MODEL] || "gpt-4o";
+  const model = options?.model || config[CONFIG_KEYS.LLM_MODEL] || "gpt-4o";
   const temperature = options?.temperature ??
-    (config[CONFIG_KEYS.LLM_TEMPERATURE] ? parseFloat(config[CONFIG_KEYS.LLM_TEMPERATURE]!) : 0.7);
+    (config[CONFIG_KEYS.LLM_TEMPERATURE] ? parseFloat(config[CONFIG_KEYS.LLM_TEMPERATURE]!) : 0.2);
   const maxTokens = options?.maxTokens ??
     (config[CONFIG_KEYS.LLM_MAX_TOKENS] ? parseInt(config[CONFIG_KEYS.LLM_MAX_TOKENS]!) : 2048);
 
@@ -78,21 +81,66 @@ export async function chatCompletion(
 export async function chatCompletionJSON<T>(
   systemPrompt: string,
   userPrompt: string,
-  options?: { temperature?: number; maxTokens?: number }
+  options?: { temperature?: number; maxTokens?: number; model?: string }
 ): Promise<T> {
-  const text = await chatCompletion(systemPrompt, userPrompt, options);
+  const llmClient = await getLLMClient();
 
-  // Try multiple extraction strategies
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[1].trim()) as T;
+  const config = await getAppConfigMany([
+    CONFIG_KEYS.LLM_MODEL,
+    CONFIG_KEYS.LLM_TEMPERATURE,
+    CONFIG_KEYS.LLM_MAX_TOKENS,
+  ]);
+
+  const model = options?.model || config[CONFIG_KEYS.LLM_MODEL] || "gpt-4o";
+  const temperature = options?.temperature ??
+    (config[CONFIG_KEYS.LLM_TEMPERATURE] ? parseFloat(config[CONFIG_KEYS.LLM_TEMPERATURE]!) : 0.2);
+  const maxTokens = options?.maxTokens ??
+    (config[CONFIG_KEYS.LLM_MAX_TOKENS] ? parseInt(config[CONFIG_KEYS.LLM_MAX_TOKENS]!) : 2048);
+
+  const response = await llmClient.chat.completions.create({
+    model,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature,
+    max_tokens: maxTokens,
+    response_format: { type: "json_object" },
+  });
+
+  const text = response.choices[0]?.message?.content || "";
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // Fallback: try to extract JSON from markdown code blocks
+    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[1].trim()) as T;
+      } catch {
+        // Fall through to error
+      }
+    }
+
+    // Fallback: try to find a JSON object (non-greedy, brace-balanced)
+    const firstBrace = text.indexOf("{");
+    if (firstBrace !== -1) {
+      let depth = 0;
+      for (let i = firstBrace; i < text.length; i++) {
+        if (text[i] === "{") depth++;
+        if (text[i] === "}") depth--;
+        if (depth === 0) {
+          try {
+            return JSON.parse(text.slice(firstBrace, i + 1)) as T;
+          } catch {
+            // Fall through to error
+          }
+          break;
+        }
+      }
+    }
+
+    throw new Error(`Failed to parse JSON from LLM response: ${text.slice(0, 300)}`);
   }
-
-  // Try to find a JSON object or array directly
-  const objectMatch = text.match(/(\{[\s\S]*\})/);
-  if (objectMatch) {
-    return JSON.parse(objectMatch[1].trim()) as T;
-  }
-
-  throw new Error(`Failed to parse JSON from LLM response: ${text.slice(0, 200)}`);
 }

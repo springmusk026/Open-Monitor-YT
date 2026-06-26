@@ -29,6 +29,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   useChannels,
   useScrapeChannel,
   useUpdateChannel,
@@ -54,6 +64,7 @@ export default function ChannelsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addHandle, setAddHandle] = useState("");
   const [addLabel, setAddLabel] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const { data: channels = [], isLoading } = useChannels();
   const scrapeChannel = useScrapeChannel();
@@ -282,10 +293,7 @@ export default function ChannelsPage() {
                         variant="ghost"
                         size="sm"
                         className="ml-auto h-7 text-xs text-destructive hover:text-destructive"
-                        onClick={() => {
-                          if (confirm("Delete this channel and all its data?"))
-                            deleteChannel.mutate(ch.id);
-                        }}
+                        onClick={() => setDeleteTarget(ch.id)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -297,6 +305,29 @@ export default function ChannelsPage() {
           </AnimatePresence>
         </motion.div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Channel</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this channel and all its tracked data, snapshots, diffs, and insights. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) deleteChannel.mutate(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -35,9 +35,9 @@ Write a 3-paragraph executive summary covering:
 2. Topics or themes they're doubling down on
 3. Any shifts in their packaging strategy (titles, thumbnails, descriptions)
 
-Respond with JSON:
+Respond with this JSON schema:
 {
-  "channelId": "${channelId}",
+  "channelId": string,
   "summary": "3-paragraph executive summary",
   "experimentsRun": ["list of experiments"],
   "topicsDoubledDown": ["topics"],

@@ -1,8 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 
-// BigInt cannot be serialized to JSON by default
+// BigInt cannot be serialized to JSON by default -- use string to avoid precision loss
 (BigInt.prototype as any).toJSON = function () {
-  return Number(this);
+  return this.toString();
 };
 
 const globalForPrisma = globalThis as unknown as {

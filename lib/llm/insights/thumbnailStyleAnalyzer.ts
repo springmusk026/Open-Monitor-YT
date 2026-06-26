@@ -2,11 +2,8 @@ import { chatCompletionJSON } from "@/lib/llm/client";
 
 export interface ThumbnailStyleInsight {
   channelId: string;
-  dominantStyle: string;
-  colorPatterns: string[];
-  textOverlayFrequency: string;
-  faceForwardFrequency: string;
-  emotionPatterns: string[];
+  urlPatterns: string[];
+  namingConventions: string[];
   consistency: string;
   reasoning: string;
 }
@@ -20,16 +17,18 @@ export async function analyzeThumbnailStyle(
   const urlsText = thumbnailUrls.map((u, i) => `${i + 1}. ${u}`).join("\n");
 
   return chatCompletionJSON<ThumbnailStyleInsight>(
-    `You are a YouTube thumbnail expert. Analyze the thumbnail style patterns of a channel.
+    `You are a YouTube analytics expert. Analyze the thumbnail URL patterns of a channel.
 
-For each thumbnail URL provided, describe:
-- Visual style (face-forward, text-heavy, object-focused, screenshot-based, etc.)
-- Dominant colors
-- Text overlay presence and style
-- Emotion/expression patterns
-- Overall consistency
+IMPORTANT: You CANNOT see the actual thumbnail images. Only analyze what can be inferred from the URLs themselves (file naming patterns, CDN paths, resolution indicators, format patterns, etc.). Do NOT guess about visual content like colors, faces, emotions, or text overlays.
 
-Respond with JSON matching the required schema.`,
+Respond with this JSON schema:
+{
+  "channelId": string,
+  "urlPatterns": ["patterns found in the URLs"],
+  "namingConventions": ["naming conventions observed"],
+  "consistency": "HIGH | MEDIUM | LOW",
+  "reasoning": "brief explanation"
+}`,
     `Channel ${channelId} - Recent thumbnail URLs:\n${urlsText}`
   );
 }

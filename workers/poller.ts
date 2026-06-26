@@ -1,7 +1,7 @@
 import { Worker, Queue } from "bullmq";
 import { prisma } from "../lib/db/prisma.js";
 import { scrapeChannelPage, scrapeVideoPage, normalizeHandle } from "../lib/scraper/firecrawlClient.js";
-import { parseSubscriberCount, parseVideoCount, parseViewCount } from "../lib/scraper/parser.js";
+import { parseSubscriberCount, parseVideoCount, parseViewCount, validateScrapedData } from "../lib/scraper/parser.js";
 import { diffSnapshots, SnapshotData } from "../lib/diff/differ.js";
 
 const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
@@ -10,6 +10,8 @@ const connectionOpts = { connection: { url: redisUrl } };
 const scrapeQueue = new Queue("channel-scrape", connectionOpts as any);
 
 const DEFAULT_INTERVAL_MS = 60_000;
+const JOB_ATTEMPTS = 3;
+const JOB_BACKOFF = { type: "exponential" as const, delay: 5_000 };
 
 // Read polling interval from DB, fallback to 60s
 async function getPollingIntervalMs(): Promise<number> {
@@ -21,6 +23,18 @@ async function getPollingIntervalMs(): Promise<number> {
     }
   } catch {}
   return DEFAULT_INTERVAL_MS;
+}
+
+// Read max channels from DB, fallback to unlimited
+async function getMaxChannels(): Promise<number> {
+  try {
+    const row = await prisma.appConfig.findUnique({ where: { key: "polling.maxChannels" } });
+    if (row?.value) {
+      const max = parseInt(row.value);
+      if (!isNaN(max) && max > 0) return max;
+    }
+  } catch {}
+  return Infinity;
 }
 
 // Remove existing repeat jobs before adding to avoid duplicates on restart
@@ -42,15 +56,24 @@ const tickWorker = new Worker(
     const enabled = await prisma.appConfig.findUnique({ where: { key: "polling.enabled" } });
     if (enabled?.value === "false") return;
 
+    const maxChannels = await getMaxChannels();
     const channels = await prisma.channel.findMany({
       where: { pollingPaused: false },
+      take: Number.isFinite(maxChannels) ? maxChannels : undefined,
+      orderBy: { lastPolledAt: "asc" },
     });
 
     for (const channel of channels) {
       await scrapeQueue.add(
         "channel-scrape",
         { channelId: channel.id, handle: channel.handle },
-        { priority: 1 }
+        {
+          priority: 1,
+          attempts: JOB_ATTEMPTS,
+          backoff: JOB_BACKOFF,
+          removeOnComplete: { count: 100 },
+          removeOnFail: { count: 500 },
+        }
       );
     }
   },
@@ -79,6 +102,13 @@ const scrapeWorker = new Worker(
       const subCount = parseSubscriberCount(data.subscriberCount);
       const vidCount = parseVideoCount(data.videoCount);
 
+      // Log data quality warnings
+      const warnings = validateScrapedData(data);
+      if (warnings.length > 0) {
+        console.warn(`[worker] Data quality warnings for ${normalizedHandle}:`, warnings);
+      }
+
+      // Update channel metadata
       await prisma.channel.update({
         where: { id: channelId },
         data: {
@@ -92,24 +122,46 @@ const scrapeWorker = new Worker(
         },
       });
 
-      await prisma.channelSnapshot.create({
-        data: {
+      // Snapshot deduplication: only create if data changed from last snapshot
+      const lastChannelSnapshot = await prisma.channelSnapshot.findFirst({
+        where: { channelId },
+        orderBy: { snappedAt: "desc" },
+      });
+
+      const channelDataChanged = !lastChannelSnapshot ||
+        lastChannelSnapshot.subscriberCount !== subCount ||
+        lastChannelSnapshot.videoCount !== vidCount ||
+        lastChannelSnapshot.description !== data.description;
+
+      if (channelDataChanged) {
+        await prisma.channelSnapshot.create({
+          data: {
+            channelId,
+            subscriberCount: subCount,
+            videoCount: vidCount,
+            description: data.description,
+          },
+        });
+      }
+
+      // Batch fetch all existing videos for this channel in one query
+      const existingVideos = await prisma.video.findMany({
+        where: {
           channelId,
-          subscriberCount: subCount,
-          videoCount: vidCount,
-          description: data.description,
+          youtubeId: { in: data.videos.map((v) => v.youtubeId) },
+        },
+        include: {
+          snapshots: { orderBy: { snappedAt: "desc" }, take: 1 },
         },
       });
 
+      const existingVideoMap = new Map(existingVideos.map((v) => [v.youtubeId, v]));
+
       const allDiffs: any[] = [];
+      const videoOps: Promise<any>[] = [];
 
       for (const scrapedVideo of data.videos) {
-        let video = await prisma.video.findUnique({
-          where: { youtubeId: scrapedVideo.youtubeId },
-          include: {
-            snapshots: { orderBy: { snappedAt: "desc" }, take: 1 },
-          },
-        });
+        let video = existingVideoMap.get(scrapedVideo.youtubeId);
 
         let viewCount = parseViewCount(scrapedVideo.viewCount);
         let likeCount: bigint | null = null;
@@ -185,40 +237,67 @@ const scrapeWorker = new Worker(
 
           const diffs = diffSnapshots(prevData, nextSnapshotData);
           for (const diff of diffs) {
-            const savedDiff = await prisma.videoDiff.create({
-              data: {
-                videoId: video.id,
-                field: diff.field,
-                oldValue: diff.oldValue,
-                newValue: diff.newValue,
-              },
+            allDiffs.push({
+              videoId: video.id,
+              field: diff.field,
+              oldValue: diff.oldValue,
+              newValue: diff.newValue,
             });
-            allDiffs.push(savedDiff);
           }
         }
 
-        await prisma.videoSnapshot.create({
-          data: {
-            videoId: video.id,
-            title,
-            thumbnailUrl,
-            description,
-            tags,
-            viewCount,
-            likeCount,
-          },
-        });
+        // Snapshot deduplication: only create if video data changed
+        const videoDataChanged = !prevSnapshot ||
+          prevSnapshot.title !== title ||
+          prevSnapshot.thumbnailUrl !== thumbnailUrl ||
+          prevSnapshot.description !== description ||
+          JSON.stringify(prevSnapshot.tags) !== JSON.stringify(tags) ||
+          prevSnapshot.viewCount?.toString() !== viewCount?.toString() ||
+          prevSnapshot.likeCount?.toString() !== likeCount?.toString();
 
-        await prisma.video.update({
-          where: { id: video.id },
-          data: {
-            title,
-            thumbnailUrl,
-            viewCount,
-            likeCount,
-            duration,
-          },
-        });
+        if (videoDataChanged) {
+          videoOps.push(
+            prisma.videoSnapshot.create({
+              data: {
+                videoId: video.id,
+                title,
+                thumbnailUrl,
+                description,
+                tags,
+                viewCount,
+                likeCount,
+              },
+            })
+          );
+        }
+
+        // Always update the video's current state
+        videoOps.push(
+          prisma.video.update({
+            where: { id: video.id },
+            data: {
+              title,
+              thumbnailUrl,
+              viewCount,
+              likeCount,
+              duration,
+            },
+          })
+        );
+      }
+
+      // Batch insert all diffs in a single transaction
+      if (allDiffs.length > 0) {
+        videoOps.push(
+          prisma.videoDiff.createMany({
+            data: allDiffs,
+          }) as any
+        );
+      }
+
+      // Execute all video operations in a single transaction
+      if (videoOps.length > 0) {
+        await prisma.$transaction(videoOps as any);
       }
 
       if (allDiffs.length > 0) {
@@ -240,12 +319,12 @@ const scrapeWorker = new Worker(
       if (recentSuccess === 0) {
         // Check if job has been retried enough times
         const attempts = job.attemptsMade || 0;
-        if (attempts >= 3) {
+        if (attempts >= JOB_ATTEMPTS - 1) {
           await prisma.channel.update({
             where: { id: channelId },
             data: { pollingPaused: true },
           });
-          console.log(`[worker] Paused polling for ${normalizedHandle} after repeated failures`);
+          console.log(`[worker] Paused polling for ${normalizedHandle} after ${attempts + 1} failures`);
         }
       }
 
