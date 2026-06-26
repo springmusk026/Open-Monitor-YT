@@ -24,17 +24,42 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, youtubeId, avatarUrl, bannerUrl, description } = body;
+    const { name, youtubeId, avatarUrl, bannerUrl, description, label } = body;
     const handle = normalizeHandle(body.handle || "");
+
+    if (!handle) {
+      return NextResponse.json(
+        { error: "handle is required" },
+        { status: 400 }
+      );
+    }
+
+    // Check for existing channel with same handle or youtubeId
+    const existing = await prisma.channel.findFirst({
+      where: {
+        OR: [
+          { handle },
+          { youtubeId: youtubeId || handle },
+        ],
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Channel already exists", channelId: existing.id },
+        { status: 409 }
+      );
+    }
 
     const channel = await prisma.channel.create({
       data: {
         youtubeId: youtubeId || handle,
         handle,
-        name,
+        name: name || handle,
         avatarUrl,
         bannerUrl,
         description,
+        label,
       },
     });
 

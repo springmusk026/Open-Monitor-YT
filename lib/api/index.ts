@@ -98,9 +98,14 @@ export const analyzeApi = {
       channelAId,
       channelBId,
     });
-    return data.insight
-      ? { ...data.insight, detail: JSON.parse(data.insight.detail || "{}") }
-      : null;
+    if (!data.insight) return null;
+    let detail = {};
+    try {
+      detail = JSON.parse(data.insight.detail || "{}");
+    } catch {
+      // LLM returned invalid JSON
+    }
+    return { ...data.insight, detail };
   },
 };
 

@@ -53,24 +53,6 @@ function parseCount(raw: string): bigint | null {
     return BigInt(Math.round(num));
   }
 
-  // Try decimal with suffix attached: "1.5M" without space
-  const noSpaceMatch = s.match(
-    /^([\d,.]+)([KMBkmb])$/
-  );
-  if (noSpaceMatch) {
-    const numStr = noSpaceMatch[1].replace(/,/g, "");
-    const num = parseFloat(numStr);
-    if (isNaN(num)) return null;
-    const suffix = noSpaceMatch[2].toUpperCase();
-    const multipliers: Record<string, number> = {
-      K: 1_000,
-      M: 1_000_000,
-      B: 1_000_000_000,
-    };
-    const result = num * (multipliers[suffix] || 1);
-    return BigInt(Math.round(result));
-  }
-
   return null;
 }
 

@@ -17,15 +17,3 @@ function getQueue(name: string): Queue {
 export function getScrapeQueue(): Queue {
   return getQueue("channel-scrape");
 }
-
-export function getVideoScrapeQueue(): Queue {
-  return getQueue("video-scrape");
-}
-
-export function getInsightQueue(): Queue {
-  return getQueue("insight-generate");
-}
-
-export function getNotificationQueue(): Queue {
-  return getQueue("notification-dispatch");
-}

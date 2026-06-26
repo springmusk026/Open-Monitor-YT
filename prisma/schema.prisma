@@ -29,6 +29,7 @@ model Channel {
   videos          Video[]
   snapshots       ChannelSnapshot[]
   insights        ChannelInsight[]
+  alertRules      AlertRule[]
 }
 
 model ChannelSnapshot {
@@ -62,6 +63,7 @@ model Video {
   diffs         VideoDiff[]
 
   @@index([channelId, publishedAt])
+  @@index([channelId, youtubeId])
 }
 
 model VideoSnapshot {
@@ -89,6 +91,7 @@ model VideoDiff {
   video      Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([videoId, detectedAt])
+  @@index([field])
 }
 
 enum DiffField {
@@ -110,6 +113,7 @@ model ChannelInsight {
   channel     Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@index([channelId, generatedAt])
+  @@index([type])
 }
 
 enum InsightType {
@@ -123,12 +127,15 @@ enum InsightType {
 }
 
 model AlertRule {
-  id          String       @id @default(cuid())
-  channelId   String?
-  trigger     AlertTrigger
+  id           String        @id @default(cuid())
+  channelId    String?
+  trigger      AlertTrigger
   notifChannel NotifChannel
-  destination String
-  enabled     Boolean      @default(true)
+  destination  String
+  enabled      Boolean       @default(true)
+  channel      Channel?      @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
 }
 
 enum AlertTrigger {

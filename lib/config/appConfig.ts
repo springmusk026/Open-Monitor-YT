@@ -2,6 +2,14 @@ import { prisma } from "@/lib/db/prisma";
 
 const cache = new Map<string, { value: string; expiresAt: number }>();
 const CACHE_TTL_MS = 60_000;
+const MAX_CACHE_ENTRIES = 500;
+
+function evictExpired() {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (entry.expiresAt <= now) cache.delete(key);
+  }
+}
 
 export async function getAppConfig(key: string): Promise<string | null> {
   const cached = cache.get(key);
@@ -12,6 +20,7 @@ export async function getAppConfig(key: string): Promise<string | null> {
   const row = await prisma.appConfig.findUnique({ where: { key } });
   if (!row) return null;
 
+  if (cache.size >= MAX_CACHE_ENTRIES) evictExpired();
   cache.set(key, { value: row.value, expiresAt: Date.now() + CACHE_TTL_MS });
   return row.value;
 }

@@ -14,6 +14,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (channelAId === channelBId) {
+      return NextResponse.json(
+        { error: "Cannot compare a channel with itself" },
+        { status: 400 }
+      );
+    }
+
     if (!(await isLLMEnabled())) {
       return NextResponse.json(
         { error: "LLM features are disabled" },

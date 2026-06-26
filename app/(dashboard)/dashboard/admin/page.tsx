@@ -120,7 +120,7 @@ const SECTIONS: {
 export default function AdminPage() {
   const [activeSection, setActiveSection] = useState("general");
   const [localConfig, setLocalConfig] = useState<Record<string, string>>({});
-  const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+  const [testResult, setTestResult] = useState<Record<string, "success" | "error" | null>>({});
 
   const { data: serverConfig, isLoading } = useAdminConfig();
   const updateConfig = useUpdateAdminConfig();
@@ -152,21 +152,21 @@ export default function AdminPage() {
   }
 
   async function testConnection(sectionId: string) {
-    setTestResult(null);
+    setTestResult((prev) => ({ ...prev, [sectionId]: null }));
     try {
       const testFn = sectionId === "llm" ? testLlm : testFirecrawl;
       const data = await testFn.mutateAsync(config);
-      setTestResult(data.success ? "success" : "error");
+      setTestResult((prev) => ({ ...prev, [sectionId]: data.success ? "success" : "error" }));
       if (data.success) {
         toast.success("Connection successful!");
       } else {
         toast.error(`Error: ${data.error}`);
       }
     } catch {
-      setTestResult("error");
+      setTestResult((prev) => ({ ...prev, [sectionId]: "error" }));
       toast.error("Connection failed");
     }
-    setTimeout(() => setTestResult(null), 3000);
+    setTimeout(() => setTestResult((prev) => ({ ...prev, [sectionId]: null })), 3000);
   }
 
   return (
@@ -286,9 +286,9 @@ export default function AdminPage() {
                     >
                       {testLlm.isPending || testFirecrawl.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : testResult === "success" ? (
+                      ) : testResult[currentSection.testKey || currentSection.id] === "success" ? (
                         <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
-                      ) : testResult === "error" ? (
+                      ) : testResult[currentSection.testKey || currentSection.id] === "error" ? (
                         <XCircle className="mr-2 h-4 w-4 text-destructive" />
                       ) : (
                         <TestTube className="mr-2 h-4 w-4" />

@@ -66,6 +66,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
+    const rule = await prisma.alertRule.findUnique({ where: { id } });
+    if (!rule) {
+      return NextResponse.json({ error: "Alert rule not found" }, { status: 404 });
+    }
+
     await prisma.alertRule.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: any) {

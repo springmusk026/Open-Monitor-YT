@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { normalizeHandle } from "@/lib/scraper/firecrawlClient";
 
 export async function GET(
   _request: NextRequest,
@@ -55,6 +56,11 @@ export async function PATCH(
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
+    // Normalize handle if being updated
+    if (typeof data.handle === "string") {
+      data.handle = normalizeHandle(data.handle);
+    }
+
     const channel = await prisma.channel.update({
       where: { id },
       data,
@@ -75,6 +81,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    const channel = await prisma.channel.findUnique({ where: { id } });
+    if (!channel) {
+      return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+    }
 
     await prisma.$transaction([
       prisma.alertRule.deleteMany({ where: { channelId: id } }),

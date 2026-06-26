@@ -60,7 +60,7 @@ export default function AlertsPage() {
   async function addRule() {
     if (!form.destination.trim()) return;
     await createRule.mutateAsync({
-      channelId: form.channelId || null,
+      channelId: form.channelId && form.channelId !== "__all__" ? form.channelId : null,
       trigger: form.trigger,
       notifChannel: form.notifChannel,
       destination: form.destination,
@@ -110,7 +110,7 @@ export default function AlertsPage() {
                   <SelectValue placeholder="All channels" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All channels</SelectItem>
+                  <SelectItem value="__all__">All channels</SelectItem>
                   {channels.map((ch) => (
                     <SelectItem key={ch.id} value={ch.id}>
                       {ch.name}

@@ -144,6 +144,25 @@ export default function ComparePage() {
             </Card>
           )}
 
+          {result.trendingIntersections?.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm text-blue-500">
+                  Trending Intersections
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1">
+                  {result.trendingIntersections.map((t: string, i: number) => (
+                    <li key={i} className="text-sm text-muted-foreground">
+                      • {t}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           {result.suggestedIdeas?.length > 0 && (
             <Card>
               <CardHeader>
